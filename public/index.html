@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Olympic Mini Games</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- ===== 헤더 ===== -->
+<div id="header" style="display:none;">
+  <div class="logo">🏅 Olympic Games</div>
+  <div class="user-info">
+    <span id="header-flag" class="flag">🏳️</span>
+    <span id="header-nickname">Player</span>
+    <span class="coins">💰 <span id="header-coins">0</span></span>
+    <span class="plays">🎮 <span id="header-plays">3/3</span></span>
+    <button class="btn btn-small" id="btn-header-scoreboard">🏆</button>
+  </div>
+</div>
+
+<!-- ===== 1. 온보딩 화면 ===== -->
+<div id="onboarding-screen" class="screen">
+  <div id="onboarding">
+    <div class="olympic-rings">🏅</div>
+    <h1>OLYMPIC MINI GAMES</h1>
+    <div class="country-display">
+      자동 감지: <span id="detected-country">🏳️</span>
+    </div>
+    <input type="text" id="nickname-input" placeholder="닉네임 입력" maxlength="12" autocomplete="off">
+    <button class="btn btn-primary" id="btn-enter">입장하기</button>
+  </div>
+</div>
+
+<!-- ===== 2. 로비 화면 ===== -->
+<div id="lobby-screen" class="screen">
+  <div class="screen-title">🏟 로비</div>
+  <div class="lobby-actions">
+    <button class="btn btn-primary" id="btn-create-room">+ 방 만들기</button>
+    <button class="btn" id="btn-scoreboard">🏆 스코어보드</button>
+  </div>
+  <div class="room-list" id="room-list">
+    <div class="no-rooms">대기 중인 방이 없습니다.<br>새 방을 만들어보세요!</div>
+  </div>
+</div>
+
+<!-- ===== 3. 대기실 화면 ===== -->
+<div id="waiting-screen" class="screen">
+  <div class="screen-title">🏃 100m 달리기</div>
+  <div class="room-id-display" id="waiting-room-id">ROOM: ---</div>
+  <div class="waiting-players" id="waiting-players"></div>
+  <div class="waiting-actions">
+    <button class="btn btn-primary" id="btn-start-game" style="display:none;">게임 시작</button>
+    <button class="btn btn-danger" id="btn-leave-room">나가기</button>
+  </div>
+</div>
+
+<!-- ===== 4. 게임 화면 ===== -->
+<div id="game-screen" class="screen">
+  <div id="game-canvas-container">
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="countdown-overlay" class="countdown-overlay hidden">3</div>
+  </div>
+  <div class="game-timer" id="game-timer">⏱ 0.0s</div>
+  <div class="input-buttons hidden">
+    <button class="input-btn" id="btn-left">⬅</button>
+    <button class="input-btn" id="btn-right">➡</button>
+  </div>
+</div>
+
+<!-- ===== 5. 결과 화면 ===== -->
+<div id="result-screen" class="screen">
+  <div class="screen-title">🏆 결과</div>
+  <div class="result-rankings" id="result-rankings"></div>
+  <div class="result-coins" id="result-coins"></div>
+  <div class="result-actions">
+    <button class="btn btn-primary" id="btn-back-to-lobby">로비로 돌아가기</button>
+  </div>
+  <div class="return-timer" id="return-timer"></div>
+</div>
+
+<!-- ===== 6. 스코어보드 화면 ===== -->
+<div id="scoreboard-screen" class="screen">
+  <div class="screen-title">🏆 국가별 메달 순위</div>
+  <table class="medal-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>국가</th>
+        <th>🥇</th>
+        <th>🥈</th>
+        <th>🥉</th>
+      </tr>
+    </thead>
+    <tbody id="medal-tbody">
+      <tr><td colspan="5" style="text-align:center;padding:30px;font-size:9px;color:#888;">아직 기록이 없습니다</td></tr>
+    </tbody>
+  </table>
+  <div style="text-align:center;margin-top:16px;">
+    <button class="btn btn-small" id="btn-scoreboard-refresh">새로고침</button>
+    <button class="btn btn-small" id="btn-scoreboard-back">돌아가기</button>
+  </div>
+</div>
+
+<!-- ===== 스크립트 ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/socket.js"></script>
+<script src="/js/games/sprint100m.js"></script>
+<script src="/js/game.js"></script>
+<script src="/js/lobby.js"></script>
+<script src="/js/main.js"></script>
+
+</body>
+</html>

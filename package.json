@@ -1,0 +1,17 @@
+{
+  "name": "olympic-game",
+  "version": "1.0.0",
+  "description": "실시간 멀티플레이어 올림픽 미니게임 웹앱",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0",
+    "socket.io-client": "^4.8.3",
+    "uuid": "^10.0.0"
+  }
+}
