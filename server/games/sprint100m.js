@@ -12,6 +12,7 @@ class Sprint100m extends GameBase {
 
     // 플레이어별 상태 초기화
     this.players = {};
+    this.botIntervals = [];       // 봇 AI 타이머
     for (const p of room.players) {
       this.players[p.userId] = {
         userId: p.userId,
@@ -24,6 +25,7 @@ class Sprint100m extends GameBase {
         inputSecondStart: 0,      // 1초 카운트 시작 시간
         finishTime: null,         // 완주 시간 (ms)
         finished: false,
+        isBot: !!p.isBot,
       };
     }
   }
@@ -57,7 +59,39 @@ class Sprint100m extends GameBase {
       this.timeoutHandle = setTimeout(() => {
         this.finishGame();
       }, this.timeout);
+
+      // 봇 AI 시작
+      this.startBotAI();
     }, 3000);
+  }
+
+  // 봇 AI: 각 봇마다 다른 속도로 자동 입력
+  startBotAI() {
+    const bots = Object.values(this.players).filter(p => p.isBot);
+
+    bots.forEach((bot, i) => {
+      // 봇마다 다른 실력 (입력 간격 ms) — 90~180ms 범위
+      // 약간의 랜덤성을 추가해서 자연스럽게
+      const baseSpeed = 100 + Math.random() * 80;
+      let currentKey = 'left';
+
+      const interval = setInterval(() => {
+        if (this.state !== 'playing' || bot.finished) {
+          clearInterval(interval);
+          return;
+        }
+
+        // 자연스러운 속도 변화 (±20ms 흔들림)
+        const jitter = (Math.random() - 0.5) * 40;
+        const actualDelay = baseSpeed + jitter;
+
+        // 교대 입력
+        this.onPlayerInput(bot.userId, { key: currentKey });
+        currentKey = currentKey === 'left' ? 'right' : 'left';
+      }, baseSpeed);
+
+      this.botIntervals.push(interval);
+    });
   }
 
   // 플레이어 입력 처리
@@ -181,6 +215,11 @@ class Sprint100m extends GameBase {
     if (this.countdownHandle) {
       clearTimeout(this.countdownHandle);
       this.countdownHandle = null;
+    }
+    // 봇 AI 인터벌 정리
+    if (this.botIntervals) {
+      this.botIntervals.forEach(iv => clearInterval(iv));
+      this.botIntervals = [];
     }
   }
 }

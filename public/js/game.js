@@ -24,12 +24,14 @@ const WaitingRoom = (() => {
       const p = players[i];
       if (p) {
         const flagEmoji = App.getFlag(p.countryCode);
-        const hostTag = (i === 0) ? '<div class="slot-host">👑 HOST</div>' : '';
+        const isBot = p.isBot || (p.userId && p.userId.startsWith('bot-'));
+        const hostTag = (i === 0 && !isBot) ? '<div class="slot-host">👑 HOST</div>' : '';
+        const botTag = isBot ? '<div class="slot-host">🤖 CPU</div>' : '';
         html += `
           <div class="player-slot occupied">
             <div class="slot-flag">${flagEmoji}</div>
             <div class="slot-name">${p.nickname}</div>
-            ${hostTag}
+            ${hostTag}${botTag}
           </div>`;
       } else {
         html += '<div class="player-slot empty"><div class="slot-flag">❓</div><div class="slot-name">대기중...</div></div>';

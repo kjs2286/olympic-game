@@ -13,6 +13,87 @@ const userToSocket = new Map();
 // userId → roomId 매핑
 const userToRoom = new Map();
 
+// 봇 이름/국가 풀
+const BOT_PROFILES = [
+  { nickname: 'Bolt', countryCode: 'US' },
+  { nickname: 'Sakura', countryCode: 'JP' },
+  { nickname: 'Chen', countryCode: 'CN' },
+  { nickname: 'Pierre', countryCode: 'FR' },
+  { nickname: 'Hans', countryCode: 'DE' },
+  { nickname: 'Olivia', countryCode: 'GB' },
+  { nickname: 'Carlos', countryCode: 'BR' },
+  { nickname: 'Priya', countryCode: 'IN' },
+  { nickname: 'Liam', countryCode: 'AU' },
+];
+
+// 방에 봇을 자동으로 추가하는 스케줄러
+function scheduleBots(room, io) {
+  // 기존 봇 타이머가 있으면 정리
+  if (room.botTimers) {
+    room.botTimers.forEach(t => clearTimeout(t));
+  }
+  room.botTimers = [];
+
+  // 사용 가능한 봇 프로필을 셔플
+  const shuffled = [...BOT_PROFILES].sort(() => Math.random() - 0.5);
+  let botIndex = 0;
+
+  // 5초 후 1명
+  room.botTimers.push(setTimeout(() => {
+    if (room.status !== 'waiting' || room.players.length >= 6) return;
+    addBot(room, io, shuffled[botIndex++]);
+  }, 5000));
+
+  // 15초 후 1명 더
+  room.botTimers.push(setTimeout(() => {
+    if (room.status !== 'waiting' || room.players.length >= 6) return;
+    addBot(room, io, shuffled[botIndex++]);
+  }, 15000));
+
+  // 25초 후 나머지 (최대 6명까지)
+  room.botTimers.push(setTimeout(() => {
+    if (room.status !== 'waiting') return;
+    while (room.players.length < 6 && botIndex < shuffled.length) {
+      addBot(room, io, shuffled[botIndex++]);
+    }
+  }, 25000));
+}
+
+// 봇 플레이어 1명 추가
+function addBot(room, io, profile) {
+  if (room.players.length >= 6) return;
+
+  const botUserId = `bot-${uuidv4().slice(0, 6)}`;
+  const playerIndex = room.players.length;
+
+  room.players.push({
+    userId: botUserId,
+    nickname: profile.nickname,
+    countryCode: profile.countryCode,
+    index: playerIndex,
+    isBot: true
+  });
+
+  console.log(`[Bot] ${profile.nickname}(${profile.countryCode}) 방 ${room.id}에 참가`);
+
+  // 방 내 업데이트 브로드캐스트
+  io.to(room.id).emit('room_updated', { players: room.players });
+  io.emit('room_list', getRoomList());
+
+  // 2명 이상이면 자동 시작 가능 알림
+  if (room.players.length >= 2) {
+    io.to(room.id).emit('bot_ready', { playerCount: room.players.length });
+  }
+}
+
+// 봇 타이머 정리
+function clearBotTimers(room) {
+  if (room.botTimers) {
+    room.botTimers.forEach(t => clearTimeout(t));
+    room.botTimers = [];
+  }
+}
+
 // 방 객체 생성 헬퍼
 function createRoomObject(gameType, hostUserId) {
   return {
@@ -120,6 +201,9 @@ function initSocketEvents(io) {
 
       // 모든 클라이언트에 방 목록 업데이트
       io.emit('room_list', getRoomList());
+
+      // 봇 자동 참가 스케줄링
+      scheduleBots(room, io);
     });
 
     // --- 방 입장 ---
@@ -170,6 +254,9 @@ function initSocketEvents(io) {
       // 방 내 다른 플레이어들에게 업데이트
       io.to(room.id).emit('room_updated', { players: room.players });
       io.emit('room_list', getRoomList());
+
+      // 실제 유저 입장 시 봇 타이머 초기화 (이미 충분하면 불필요)
+      if (room.players.length >= 6) clearBotTimers(room);
     });
 
     // --- 방 나가기 ---
@@ -205,8 +292,10 @@ function initSocketEvents(io) {
         return;
       }
 
-      // 각 플레이어 코인/일일 횟수 체크
+      // 각 실제 플레이어 코인/일일 횟수 체크 (봇 제외)
       for (const player of room.players) {
+        if (player.isBot) continue;
+
         const coins = db.getCoins(player.userId);
         if (coins < 1) {
           const playerSocket = io.sockets.sockets.get(userToSocket.get(player.userId));
@@ -228,11 +317,15 @@ function initSocketEvents(io) {
         }
       }
 
-      // 코인 차감 및 일일 횟수 증가
+      // 코인 차감 및 일일 횟수 증가 (봇 제외)
       for (const player of room.players) {
+        if (player.isBot) continue;
         db.deductGameCost(player.userId);
         db.incrementDailyPlay(player.userId);
       }
+
+      // 봇 타이머 정리
+      clearBotTimers(room);
 
       // 게임 인스턴스 생성
       room.status = 'playing';
@@ -307,25 +400,28 @@ function waitForGameFinish(room, io) {
         const coinRewards = {};
 
         room.game.results.forEach((result, index) => {
+          const isBot = result.userId.startsWith('bot-');
           if (index < 3 && result.finishTime !== null) {
             const medal = medalTypes[index];
-            const reward = db.awardMedal(result.userId, result.countryCode, room.gameType, medal);
+            // 봇은 DB에 메달 저장하지 않음
+            const reward = isBot ? 0 : db.awardMedal(result.userId, result.countryCode, room.gameType, medal);
             coinRewards[result.userId] = {
               medal,
               reward,
-              totalCoins: db.getCoins(result.userId)
+              totalCoins: isBot ? 0 : db.getCoins(result.userId)
             };
           } else {
             coinRewards[result.userId] = {
               medal: null,
               reward: 0,
-              totalCoins: db.getCoins(result.userId)
+              totalCoins: isBot ? 0 : db.getCoins(result.userId)
             };
           }
         });
 
-        // 각 플레이어에게 코인 정보 전송
+        // 각 실제 플레이어에게 코인 정보 전송 (봇 제외)
         for (const player of room.players) {
+          if (player.isBot) continue;
           const playerSocketId = userToSocket.get(player.userId);
           const playerSocket = io.sockets.sockets.get(playerSocketId);
           if (playerSocket) {
